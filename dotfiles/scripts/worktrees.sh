@@ -23,6 +23,9 @@ set -euo pipefail
 #   RUN_PRE_COMMIT: run pre-commit in tasks phases if available (default: "false")
 #   PRE_CREATE_TASKS, POST_CREATE_TASKS, PRE_UPDATE_TASKS, POST_UPDATE_TASKS,
 #   PRE_PUSH_TASKS, POST_PUSH_TASKS, PRE_DIFF_TASKS, POST_DIFF_TASKS: shell commands to run
+#   ENABLE_DOTBARE: if "true", enable dotbare integration (default: "true")
+#   DOTBARE_CMD: dotbare binary name/path (default: "dotbare")
+#   FZF_CMD: fzf binary name/path (default: "fzf")
 #
 # Usage examples:
 #   scripts/worktrees.sh create                    # create for all branches except main
@@ -53,6 +56,9 @@ EXCLUDE_BRANCHES_DEFAULT=(main)
 DEFAULT_BASE_BRANCH="${DEFAULT_BASE_BRANCH:-main}"
 AUTO_PUSH_NEW_BRANCHES="${AUTO_PUSH_NEW_BRANCHES:-false}"
 RUN_PRE_COMMIT="${RUN_PRE_COMMIT:-false}"
+ENABLE_DOTBARE="${ENABLE_DOTBARE:-true}"
+DOTBARE_CMD="${DOTBARE_CMD:-dotbare}"
+FZF_CMD="${FZF_CMD:-fzf}"
 
 _log() { printf "[worktrees] %s\n" "$*"; }
 _err() { printf "[worktrees][error] %s\n" "$*" 1>&2; }
@@ -63,6 +69,10 @@ _ensure_dir() {
   if [[ ! -d "$dir" ]]; then
     mkdir -p "$dir"
   fi
+}
+
+_has_cmd() {
+  command -v "$1" >/dev/null 2>&1
 }
 
 _all_local_branches() {
@@ -104,6 +114,28 @@ _resolve_branches() {
     branches=(${filtered[@]:-})
   fi
   printf "%s\n" "${branches[@]:-}"
+}
+
+_fzf_select_branches() {
+  # Usage: _fzf_select_branches <provided-space-separated-or-empty> [--multi]
+  local provided_list="$1"; shift || true
+  local multi=false
+  if [[ "${1:-}" == "--multi" ]]; then multi=true; fi
+  local -a branches
+  if [[ -n "$provided_list" ]]; then
+    # shellcheck disable=SC2206
+    branches=($provided_list)
+  else
+    mapfile -t branches < <(_resolve_branches "")
+  fi
+  if ! _has_cmd "$FZF_CMD"; then
+    _die "fzf is required for --interactive. Install it and retry."
+  fi
+  if $multi; then
+    printf "%s\n" "${branches[@]}" | "$FZF_CMD" --multi --prompt="branches> "
+  else
+    printf "%s\n" "${branches[@]}" | "$FZF_CMD" --prompt="branch> " | head -n1
+  fi
 }
 
 _ensure_upstream() {
@@ -159,13 +191,14 @@ _run_phase_tasks() {
 }
 
 cmd_create() {
-  local branches_csv="" force_rebase_start=false
+  local branches_csv="" force_rebase_start=false interactive=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --branches)
         branches_csv="$2"; shift 2;;
       --root)
         WORKTREES_ROOT="$2"; shift 2;;
+      --interactive|-i) interactive=true; shift;;
       *) _die "Unknown option for create: $1";;
     esac
   done
@@ -173,7 +206,13 @@ cmd_create() {
   _ensure_dir "$WORKTREES_ROOT"
   git fetch --all --prune
 
-  mapfile -t branches < <(_resolve_branches "$branches_csv")
+  if $interactive; then
+    local selected
+    selected=$(_fzf_select_branches "$branches_csv" --multi)
+    mapfile -t branches < <(printf "%s\n" "$selected")
+  else
+    mapfile -t branches < <(_resolve_branches "$branches_csv")
+  fi
   [[ ${#branches[@]} -gt 0 ]] || _die "No branches to create worktrees for"
 
   local branch path
@@ -213,19 +252,26 @@ cmd_create() {
 }
 
 cmd_new() {
-  local branches_csv="" base="${DEFAULT_BASE_BRANCH}" do_push=false
+  local branches_csv="" base="${DEFAULT_BASE_BRANCH}" do_push=false interactive=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --branches) branches_csv="$2"; shift 2;;
       --base) base="$2"; shift 2;;
       --push) do_push=true; shift;;
       --root) WORKTREES_ROOT="$2"; shift 2;;
+      --interactive|-i) interactive=true; shift;;
       *) _die "Unknown option for new: $1";;
     esac
   done
   _ensure_dir "$WORKTREES_ROOT"
   git fetch --all --prune
-  mapfile -t branches < <(_resolve_branches "$branches_csv")
+  if $interactive; then
+    local input
+    input=$(_fzf_select_branches "$branches_csv" --multi)
+    mapfile -t branches < <(printf "%s\n" "$input")
+  else
+    mapfile -t branches < <(_resolve_branches "$branches_csv")
+  fi
   [[ ${#branches[@]} -gt 0 ]] || _die "No branches provided to create"
   local branch path
   for branch in "${branches[@]}"; do
@@ -261,18 +307,24 @@ cmd_new() {
 }
 
 cmd_update() {
-  local branches_csv="" rebase=false ffonly=true
+  local branches_csv="" rebase=false ffonly=true interactive=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --branches) branches_csv="$2"; shift 2;;
       --rebase) rebase=true; ffonly=false; shift;;
       --ff-only|--ffonly) ffonly=true; rebase=false; shift;;
       --root) WORKTREES_ROOT="$2"; shift 2;;
+      --interactive|-i) interactive=true; shift;;
       *) _die "Unknown option for update: $1";;
     esac
   done
-
-  mapfile -t branches < <(_resolve_branches "$branches_csv")
+  if $interactive; then
+    local selected
+    selected=$(_fzf_select_branches "$branches_csv" --multi)
+    mapfile -t branches < <(printf "%s\n" "$selected")
+  else
+    mapfile -t branches < <(_resolve_branches "$branches_csv")
+  fi
   local branch path
   for branch in "${branches[@]}"; do
     path=$(_worktree_path_for "$branch")
@@ -299,7 +351,7 @@ cmd_update() {
 }
 
 cmd_diff() {
-  local branches_csv="" stat=false name_only=false color=always
+  local branches_csv="" stat=false name_only=false color=always interactive=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --branches) branches_csv="$2"; shift 2;;
@@ -307,10 +359,17 @@ cmd_diff() {
       --name-only|--name) name_only=true; shift;;
       --no-color) color=never; shift;;
       --root) WORKTREES_ROOT="$2"; shift 2;;
+      --interactive|-i) interactive=true; shift;;
       *) _die "Unknown option for diff: $1";;
     esac
   done
-  mapfile -t branches < <(_resolve_branches "$branches_csv")
+  if $interactive; then
+    local selected
+    selected=$(_fzf_select_branches "$branches_csv" --multi)
+    mapfile -t branches < <(printf "%s\n" "$selected")
+  else
+    mapfile -t branches < <(_resolve_branches "$branches_csv")
+  fi
   local branch path upstream
   for branch in "${branches[@]}"; do
     path=$(_worktree_path_for "$branch")
@@ -337,17 +396,24 @@ cmd_diff() {
 }
 
 cmd_push() {
-  local branches_csv="" changed_only=false force_with_lease=false
+  local branches_csv="" changed_only=false force_with_lease=false interactive=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --branches) branches_csv="$2"; shift 2;;
       --changed) changed_only=true; shift;;
       --force-with-lease) force_with_lease=true; shift;;
       --root) WORKTREES_ROOT="$2"; shift 2;;
+      --interactive|-i) interactive=true; shift;;
       *) _die "Unknown option for push: $1";;
     esac
   done
-  mapfile -t branches < <(_resolve_branches "$branches_csv")
+  if $interactive; then
+    local selected
+    selected=$(_fzf_select_branches "$branches_csv" --multi)
+    mapfile -t branches < <(printf "%s\n" "$selected")
+  else
+    mapfile -t branches < <(_resolve_branches "$branches_csv")
+  fi
   local branch path has_changes
   for branch in "${branches[@]}"; do
     path=$(_worktree_path_for "$branch")
@@ -400,6 +466,38 @@ cmd_exec() {
       eval $shell "$cmd"
     )
   done
+}
+
+cmd_tui() {
+  # Open an interactive session (dotbare or lazygit) in a selected worktree
+  local branch="" interactive=true pass_args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --branch) branch="$2"; shift 2;;
+      --interactive|-i) interactive=true; shift;;
+      --root) WORKTREES_ROOT="$2"; shift 2;;
+      --) shift; pass_args=("$@"); break;;
+      *) _die "Unknown option for tui: $1";;
+    esac
+  done
+  if [[ -z "$branch" && $interactive == true ]]; then
+    branch=$(_fzf_select_branches "")
+  fi
+  [[ -n "$branch" ]] || _die "No branch selected for TUI"
+  local path=$(_worktree_path_for "$branch")
+  [[ -d "$path" ]] || _die "Worktree not found at $path"
+  if [[ "$ENABLE_DOTBARE" == "true" ]] && _has_cmd "$DOTBARE_CMD"; then
+    _log "Launching dotbare in $branch"
+    (
+      cd "$path"
+      DOTBARE_DIR="${path}/.git" DOTBARE_TREE="${path}" "$DOTBARE_CMD" "${pass_args[@]:-}"
+    )
+  elif _has_cmd lazygit; then
+    _log "dotbare not found; launching lazygit in $branch"
+    (cd "$path" && lazygit)
+  else
+    _die "Neither dotbare nor lazygit found. Install dotbare to enable TUI."
+  fi
 }
 
 cmd_list() {
