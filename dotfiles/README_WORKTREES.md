@@ -64,6 +64,7 @@ lazygit --version      # O dotbare para TUI
 
 # En Arch Linux
 sudo pacman -S git bash fzf lazygit nodejs npm
+paru -S  tree bat highlight ruby-coderay git-delta diff-so-fancy
 yay -S dotbare         # Opcional, desde AUR
 ```
 
@@ -587,7 +588,7 @@ dotfiles/scripts/worktrees.sh create --branches \
 
 # Abrir cada uno en una ventana separada
 code worktrees/feat/new-api
-code worktrees/feat/ui-redesign  
+code worktrees/feat/ui-redesign
 code worktrees/fix/memory-leak
 
 # Ejecutar tests en paralelo

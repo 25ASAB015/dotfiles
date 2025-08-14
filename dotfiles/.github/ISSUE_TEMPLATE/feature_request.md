@@ -14,5 +14,3 @@ assignees: ''
 ### Alternativas consideradas
 
 ### Impacto
-
-

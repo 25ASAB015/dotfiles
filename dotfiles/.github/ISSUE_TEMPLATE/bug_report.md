@@ -10,9 +10,9 @@ assignees: ''
 ¿Qué está pasando?
 
 ### Pasos para reproducir
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ### Comportamiento esperado
 
@@ -22,5 +22,3 @@ assignees: ''
 ### Entorno
 - SO/Versión
 - Versión del proyecto
-
-

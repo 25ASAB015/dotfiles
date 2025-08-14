@@ -18,5 +18,3 @@ Resumen breve del cambio.
 
 ### Notas
 Contexto adicional si aplica.
-
-

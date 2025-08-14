@@ -1,7 +1,7 @@
 # Cursor Rules - Sistema de Gestión con Git Worktrees
 
 ## 🎯 Propósito
-Este archivo configura Cursor para trabajar con nuestro sistema avanzado de git worktrees. 
+Este archivo configura Cursor para trabajar con nuestro sistema avanzado de git worktrees.
 Incluso si no eres técnico, Cursor te guiará paso a paso.
 
 ## 🚀 Inicio Rápido para Nuevos Usuarios
@@ -135,7 +135,7 @@ cd /home/renaissance/devspaces/Jupiter🪐_Large_personal_project/dotfiles
 
 ### 8. Configuración del Entorno
 
-El archivo `.worktrees.env` controla el comportamiento. 
+El archivo `.worktrees.env` controla el comportamiento.
 Valores importantes:
 - `ENFORCE_PRE_PUSH=true` - Obliga validaciones antes de publicar
 - `RUN_COMMITLINT=true` - Valida formato de mensajes
