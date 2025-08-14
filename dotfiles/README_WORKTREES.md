@@ -83,6 +83,17 @@ Esto generará una rama `feat/awesome-thing`, creará su worktree y hará push s
 Para validar nombres de rama automáticamente, ajusta `BRANCH_NAME_REGEX` y `ENFORCE_BRANCH_CONVENTION` en `.worktrees.env`.
 
 ### Commitlint + Husky
+### Commitizen (asistente interactivo de commits)
+
+```bash
+npm run commit
+```
+
+Sigue el flujo de conventional commits para redactar mensajes válidos.
+
+### Plantillas de Issues y PR
+
+Se incluyen plantillas en `dotfiles/.github/` para bug reports, feature requests y PRs.
 
 Se incluye configuración lista para usar con commitlint y husky:
 - Archivo `commitlint.config.js` con `@commitlint/config-conventional`
