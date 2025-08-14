@@ -11,7 +11,7 @@ Script: `dotfiles/scripts/worktrees.sh`
 - **push**: empuja todas o solo las que tienen cambios (`--changed`).
 - **exec**: ejecuta un comando arbitrario en cada worktree.
 - **tui**: abre una TUI por worktree con `dotbare` si está instalado (o `lazygit` como fallback).
-  - Soporta selección interactiva con `fzf`.
+  - Soporta selección interactiva con `fzf` con preview (rama, upstream, último commit, status del worktree).
 - **list**: lista ramas y ruta de worktree.
 - **status**: `git status --short` de cada worktree.
 - **prune**: `git worktree prune` y verificación.
@@ -27,6 +27,10 @@ Variables de entorno (pueden persistirse en `.worktrees.env` en la raíz del rep
 - `RUN_PRE_COMMIT`: si `true`, ejecuta `pre-commit run -a` si hay configuración.
 - `ENABLE_DOTBARE`, `DOTBARE_CMD`, `FZF_CMD`: integración con `dotbare` y `fzf`.
 - `ENABLE_PARALLEL`, `PARALLEL_JOBS`: ejecutar `update/diff/push/exec` en paralelo.
+- Validaciones y convenciones:
+  - `ENFORCE_PRE_PUSH`, `HALT_ON_VALIDATION_FAIL`
+  - `RUN_COMMITLINT`, `COMMITLINT_CMD`, `COMMITLINT_RANGE_MODE`
+  - `BRANCH_NAME_REGEX`, `ENFORCE_BRANCH_CONVENTION`
 - `PRE_CREATE_TASKS`, `POST_CREATE_TASKS`, `PRE_UPDATE_TASKS`, `POST_UPDATE_TASKS`, `PRE_PUSH_TASKS`, `POST_PUSH_TASKS`, `PRE_DIFF_TASKS`, `POST_DIFF_TASKS`: comandos a ejecutar por fase, en el contexto de cada worktree.
 
 Ejemplo: ver `.worktrees.env.example`.
@@ -60,6 +64,8 @@ dotfiles/scripts/worktrees.sh diff --name-only
 ```
 
 #### Push solo de ramas con cambios:
+Validaciones pre-push: si alguna tarea de fase `PRE_PUSH_TASKS`, `pre-commit` (si habilitado) o `commitlint` (si habilitado) falla, el push se aborta cuando `ENFORCE_PRE_PUSH=true`.
+
 
 ```bash
 dotfiles/scripts/worktrees.sh push --changed
@@ -109,6 +115,15 @@ Variables de entorno relevantes:
 - `FZF_CMD=fzf` para selección interactiva
 
 dotbare: consulta la documentación oficial en [kazhala/dotbare](https://github.com/kazhala/dotbare)
+
+### Promover rama (merge a base + prune worktree)
+
+Próximo comando `promote` (si lo habilitas más adelante) hará:
+- merge de la rama seleccionada hacia la base (`DEFAULT_BASE_BRANCH` o `--base`)
+- push de la base
+- eliminación del worktree de la rama y borrado local (opcional borrar remoto)
+
+Por ahora puedes usar `archive` y luego hacer el merge manualmente.
 
 
 ```bash

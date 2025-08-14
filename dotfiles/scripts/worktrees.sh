@@ -27,6 +27,13 @@ set -euo pipefail
 #   ENABLE_DOTBARE: if "true", enable dotbare integration (default: "true")
 #   DOTBARE_CMD: dotbare binary name/path (default: "dotbare")
 #   FZF_CMD: fzf binary name/path (default: "fzf")
+#   ENFORCE_PRE_PUSH: if "true", abort push when pre-push validations fail (default: "true")
+#   HALT_ON_VALIDATION_FAIL: if "true", abort whole run on first validation failure (default: "true")
+#   RUN_COMMITLINT: if "true", run commitlint as part of validations (default: "false")
+#   COMMITLINT_CMD: command to invoke commitlint (default: "npx --yes commitlint")
+#   COMMITLINT_RANGE_MODE: "last" or "range" (default: "last")
+#   BRANCH_NAME_REGEX: regex to enforce branch naming
+#   ENFORCE_BRANCH_CONVENTION: if "true", block creating non-conforming branches (default: "true")
 #   ENABLE_PARALLEL: if "true", allow parallel execution (default: "false")
 #   PARALLEL_JOBS: number of parallel jobs (default: CPU cores or 4)
 #   ENABLE_PARALLEL: if "true", allow parallel execution (default: "false")
@@ -65,6 +72,13 @@ RUN_PRE_COMMIT="${RUN_PRE_COMMIT:-false}"
 ENABLE_DOTBARE="${ENABLE_DOTBARE:-true}"
 DOTBARE_CMD="${DOTBARE_CMD:-dotbare}"
 FZF_CMD="${FZF_CMD:-fzf}"
+ENFORCE_PRE_PUSH="${ENFORCE_PRE_PUSH:-true}"
+HALT_ON_VALIDATION_FAIL="${HALT_ON_VALIDATION_FAIL:-true}"
+RUN_COMMITLINT="${RUN_COMMITLINT:-false}"
+COMMITLINT_CMD="${COMMITLINT_CMD:-npx --yes commitlint}"
+COMMITLINT_RANGE_MODE="${COMMITLINT_RANGE_MODE:-last}"
+BRANCH_NAME_REGEX="${BRANCH_NAME_REGEX:-^(feat|fix|chore|docs|refactor|test|build|ci|perf|style)\/[a-z0-9._-]+$}"
+ENFORCE_BRANCH_CONVENTION="${ENFORCE_BRANCH_CONVENTION:-true}"
 
 _log() { printf "[worktrees] %s\n" "$*"; }
 _err() { printf "[worktrees][error] %s\n" "$*" 1>&2; }
@@ -183,17 +197,46 @@ _run_phase_tasks() {
   local tasks_string="${!var_name-}"
   (
     cd "$path"
+    local failed=0
     if [[ -n "$tasks_string" ]]; then
       _log "Running ${var_name} in $branch"
-      bash -lc "$tasks_string" || _err "Tasks failed for $branch phase=$phase"
+      bash -lc "$tasks_string" || failed=1
     fi
     if [[ "$RUN_PRE_COMMIT" == "true" && -x "$(command -v pre-commit || true)" ]]; then
       if [[ -f ".pre-commit-config.yaml" || -f ".pre-commit-config.yml" ]]; then
         _log "Running pre-commit in $branch"
-        pre-commit run -a || _err "pre-commit issues in $branch"
+        pre-commit run -a || failed=1
       fi
     fi
+    if [[ "$RUN_COMMITLINT" == "true" && "$phase" == "pre_push" ]]; then
+      _log "Running commitlint in $branch"
+      if [[ "$COMMITLINT_RANGE_MODE" == "range" ]]; then
+        local upstream
+        upstream=$(git rev-parse --abbrev-ref --symbolic-full-name "${branch}@{upstream}" 2>/dev/null || true)
+        if [[ -n "$upstream" ]]; then
+          $COMMITLINT_CMD --from "$upstream" --to "$branch" || failed=1
+        else
+          git log -1 --pretty=%B | $COMMITLINT_CMD || failed=1
+        fi
+      else
+        git log -1 --pretty=%B | $COMMITLINT_CMD || failed=1
+      fi
+    fi
+    exit $failed
   )
+}
+
+_validate_branch_name() {
+  local branch="$1"
+  if [[ "$branch" =~ $BRANCH_NAME_REGEX ]]; then
+    return 0
+  fi
+  if [[ "$ENFORCE_BRANCH_CONVENTION" == "true" ]]; then
+    _die "Branch '$branch' does not conform to naming convention regex: $BRANCH_NAME_REGEX"
+  else
+    _err "Branch '$branch' does not conform to naming convention regex (continuing)"
+    return 1
+  fi
 }
 
 cmd_create() {
@@ -236,6 +279,7 @@ cmd_create() {
       else
         # Create from base if not found anywhere
         local base="${BASE_BRANCH:-${DEFAULT_BASE_BRANCH}}"
+        _validate_branch_name "$branch" || true
         if git show-ref --verify --quiet "refs/heads/${base}"; then
           _log "Creating local branch $branch from $base"
           git branch "$branch" "$base"
@@ -285,6 +329,7 @@ cmd_new() {
       _log "Branch $branch already exists; skipping creation"
       continue
     fi
+    _validate_branch_name "$branch" || true
     if ! git show-ref --verify --quiet "refs/heads/${base}"; then
       if git show-ref --verify --quiet "refs/remotes/origin/${base}"; then
         _log "Creating local base $base from origin/$base"
