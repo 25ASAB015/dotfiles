@@ -11,6 +11,7 @@ set -euo pipefail
 # - diff:   Show diffs vs upstream (origin/<branch> by default)
 # - push:   Push all or only changed branches
 # - exec:   Run an arbitrary command in each worktree
+# - tui:    Interactive TUI per worktree (dotbare/lazygit) and fzf interactive selectors
 # - list:   List branches and their worktree paths
 # - status: Show short status per worktree
 # - prune:  Prune stale worktrees and verify
@@ -26,6 +27,10 @@ set -euo pipefail
 #   ENABLE_DOTBARE: if "true", enable dotbare integration (default: "true")
 #   DOTBARE_CMD: dotbare binary name/path (default: "dotbare")
 #   FZF_CMD: fzf binary name/path (default: "fzf")
+#   ENABLE_PARALLEL: if "true", allow parallel execution (default: "false")
+#   PARALLEL_JOBS: number of parallel jobs (default: CPU cores or 4)
+#   ENABLE_PARALLEL: if "true", allow parallel execution (default: "false")
+#   PARALLEL_JOBS: number of parallel jobs (default: CPU cores or 4)
 #
 # Usage examples:
 #   scripts/worktrees.sh create                    # create for all branches except main
@@ -35,6 +40,7 @@ set -euo pipefail
 #   scripts/worktrees.sh diff --stat
 #   scripts/worktrees.sh push --changed
 #   scripts/worktrees.sh exec -- "npm test"
+#   scripts/worktrees.sh tui
 #   scripts/worktrees.sh list
 #   scripts/worktrees.sh status
 #   scripts/worktrees.sh prune

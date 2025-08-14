@@ -11,6 +11,7 @@ Script: `dotfiles/scripts/worktrees.sh`
 - **push**: empuja todas o solo las que tienen cambios (`--changed`).
 - **exec**: ejecuta un comando arbitrario en cada worktree.
 - **tui**: abre una TUI por worktree con `dotbare` si está instalado (o `lazygit` como fallback).
+  - Soporta selección interactiva con `fzf`.
 - **list**: lista ramas y ruta de worktree.
 - **status**: `git status --short` de cada worktree.
 - **prune**: `git worktree prune` y verificación.
@@ -25,6 +26,7 @@ Variables de entorno (pueden persistirse en `.worktrees.env` en la raíz del rep
 - `AUTO_PUSH_NEW_BRANCHES`: si `true`, hace push de ramas nuevas automáticamente.
 - `RUN_PRE_COMMIT`: si `true`, ejecuta `pre-commit run -a` si hay configuración.
 - `ENABLE_DOTBARE`, `DOTBARE_CMD`, `FZF_CMD`: integración con `dotbare` y `fzf`.
+- `ENABLE_PARALLEL`, `PARALLEL_JOBS`: ejecutar `update/diff/push/exec` en paralelo.
 - `PRE_CREATE_TASKS`, `POST_CREATE_TASKS`, `PRE_UPDATE_TASKS`, `POST_UPDATE_TASKS`, `PRE_PUSH_TASKS`, `POST_PUSH_TASKS`, `PRE_DIFF_TASKS`, `POST_DIFF_TASKS`: comandos a ejecutar por fase, en el contexto de cada worktree.
 
 Ejemplo: ver `.worktrees.env.example`.
@@ -77,6 +79,23 @@ dotfiles/scripts/worktrees.sh status
 ```
 
 #### Prune:
+#### Ejecutar en paralelo
+
+```bash
+dotfiles/scripts/worktrees.sh update --parallel
+dotfiles/scripts/worktrees.sh diff --parallel --name-only
+dotfiles/scripts/worktrees.sh push --changed --parallel
+```
+
+Controla el grado de paralelismo con `PARALLEL_JOBS` en `.worktrees.env`.
+
+#### Archivar ramas y limpiar worktrees
+
+```bash
+dotfiles/scripts/worktrees.sh archive --branches "feat/x" --tag archived-$(date +%Y%m%d) --message "Archive feat/x"
+```
+
+Opciones: `--delete-remote`, `--keep-local`.
 #### TUI por worktree (dotbare / lazygit)
 
 ```bash
