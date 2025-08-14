@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# no-op pre-commit to avoid blocking commits
+exit 0

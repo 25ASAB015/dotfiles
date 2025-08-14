@@ -72,6 +72,30 @@ dotfiles/scripts/worktrees.sh push --changed
 ```
 
 #### Ejecutar un comando (tests) en cada worktree:
+#### Crear rama con prefijo estándar
+
+```bash
+dotfiles/scripts/worktrees.sh mkbranch --prefix feat --title "awesome thing" --base main --push
+```
+
+Esto generará una rama `feat/awesome-thing`, creará su worktree y hará push si se indica `--push`.
+
+Para validar nombres de rama automáticamente, ajusta `BRANCH_NAME_REGEX` y `ENFORCE_BRANCH_CONVENTION` en `.worktrees.env`.
+
+### Commitlint + Husky
+
+Se incluye configuración lista para usar con commitlint y husky:
+- Archivo `commitlint.config.js` con `@commitlint/config-conventional`
+- Hook `commit-msg` de husky que valida los mensajes
+
+Instalación (ya automatizada, pero por si necesitas):
+```bash
+npm install -D @commitlint/cli @commitlint/config-conventional husky
+npx husky init
+echo 'export default { extends: ["@commitlint/config-conventional"] };' > commitlint.config.js
+echo 'exec < /dev/tty\nnpx --yes commitlint --edit "$1"' > .husky/commit-msg
+chmod +x .husky/commit-msg
+```
 
 ```bash
 dotfiles/scripts/worktrees.sh exec -- "npm ci && npm test"

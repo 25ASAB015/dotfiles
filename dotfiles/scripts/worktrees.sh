@@ -43,6 +43,7 @@ set -euo pipefail
 #   scripts/worktrees.sh create                    # create for all branches except main
 #   scripts/worktrees.sh create --branches "dev Aline"
 #   scripts/worktrees.sh new --branches "feature-x" --base main --push
+#   scripts/worktrees.sh mkbranch --prefix feat --title "awesome thing" --base main --push
 #   scripts/worktrees.sh update --rebase
 #   scripts/worktrees.sh diff --stat
 #   scripts/worktrees.sh push --changed
@@ -381,6 +382,39 @@ cmd_new() {
   done
 }
 
+_slugify() {
+  # Convert a title to a URL-friendly slug (lowercase, hyphens)
+  printf '%s' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g'
+}
+
+cmd_mkbranch() {
+  # Create a single branch from prefix and title, then delegate to cmd_new
+  local prefix="" title="" base="${DEFAULT_BASE_BRANCH}" do_push=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --prefix) prefix="$2"; shift 2;;
+      --title) title="$2"; shift 2;;
+      --base) base="$2"; shift 2;;
+      --push) do_push=true; shift;;
+      --root) WORKTREES_ROOT="$2"; shift 2;;
+      *) _die "Unknown option for mkbranch: $1";;
+    esac
+  done
+  [[ -n "$prefix" ]] || _die "--prefix is required (e.g., feat, fix, chore)"
+  [[ -n "$title" ]] || _die "--title is required"
+  local slug branch
+  slug=$(_slugify "$title")
+  branch="${prefix}/${slug}"
+  _validate_branch_name "$branch" || true
+  if $do_push; then
+    cmd_new --branches "$branch" --base "$base" --push --root "$WORKTREES_ROOT"
+  else
+    cmd_new --branches "$branch" --base "$base" --root "$WORKTREES_ROOT"
+  fi
+}
+
 cmd_update() {
   local branches_csv="" rebase=false ffonly=true interactive=false
   while [[ $# -gt 0 ]]; do
@@ -643,6 +677,7 @@ Usage: scripts/worktrees.sh <command> [options]
 Commands:
   create [--branches "b1 b2"] [--root PATH]
   new    [--branches "b1 b2"] [--base BRANCH] [--push] [--root PATH]
+  mkbranch --prefix PREFIX --title "TITLE" [--base BRANCH] [--push] [--root PATH]
   update [--branches "b1 b2"] [--ff-only|--rebase] [--root PATH]
   diff   [--branches "b1 b2"] [--stat|--name-only] [--no-color] [--root PATH]
   push   [--branches "b1 b2"] [--changed] [--force-with-lease] [--root PATH]
@@ -663,6 +698,7 @@ Env vars:
 Examples:
   scripts/worktrees.sh create
   scripts/worktrees.sh new --branches "feature-x feature-y" --base main --push
+  scripts/worktrees.sh mkbranch --prefix feat --title "awesome thing" --base main --push
   scripts/worktrees.sh update --rebase
   scripts/worktrees.sh diff --stat
   scripts/worktrees.sh push --changed
@@ -675,6 +711,7 @@ main() {
   case "$cmd" in
     create) cmd_create "$@";;
     new)    cmd_new "$@";;
+    mkbranch) cmd_mkbranch "$@";;
     update) cmd_update "$@";;
     diff)   cmd_diff "$@";;
     push)   cmd_push "$@";;

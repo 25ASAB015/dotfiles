@@ -1,0 +1,2 @@
+exec < /dev/tty
+npx --yes commitlint --edit "$1"
