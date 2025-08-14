@@ -64,7 +64,7 @@ dotfiles/scripts/worktrees.sh diff --name-only
 ```
 
 #### Push solo de ramas con cambios:
-Validaciones pre-push: si alguna tarea de fase `PRE_PUSH_TASKS`, `pre-commit` (si habilitado) o `commitlint` (si habilitado) falla, el push se aborta cuando `ENFORCE_PRE_PUSH=true`.
+Validaciones pre-push: si alguna tarea de fase `PRE_PUSH_TASKS`, `pre-commit` (si habilitado) o `commitlint` (si habilitado) falla, el push se aborta cuando `ENFORCE_PRE_PUSH=true`. Controla el comportamiento global con `HALT_ON_VALIDATION_FAIL`.
 
 
 ```bash
@@ -118,12 +118,18 @@ dotbare: consulta la documentación oficial en [kazhala/dotbare](https://github.
 
 ### Promover rama (merge a base + prune worktree)
 
-Próximo comando `promote` (si lo habilitas más adelante) hará:
-- merge de la rama seleccionada hacia la base (`DEFAULT_BASE_BRANCH` o `--base`)
-- push de la base
-- eliminación del worktree de la rama y borrado local (opcional borrar remoto)
+Nuevo comando `promote`:
 
-Por ahora puedes usar `archive` y luego hacer el merge manualmente.
+```bash
+dotfiles/scripts/worktrees.sh promote --branch feat/x --base main --no-ff
+```
+
+Opciones:
+- `--branches` o `--branch`: una o varias ramas
+- `--base`: rama base (por defecto `DEFAULT_BASE_BRANCH`)
+- `--no-ff` o `--squash`
+- `--delete-remote`: elimina la rama remota tras promover
+- `--keep-worktree`: conserva el worktree local
 
 
 ```bash

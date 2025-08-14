@@ -79,6 +79,13 @@ COMMITLINT_CMD="${COMMITLINT_CMD:-npx --yes commitlint}"
 COMMITLINT_RANGE_MODE="${COMMITLINT_RANGE_MODE:-last}"
 BRANCH_NAME_REGEX="${BRANCH_NAME_REGEX:-^(feat|fix|chore|docs|refactor|test|build|ci|perf|style)\/[a-z0-9._-]+$}"
 ENFORCE_BRANCH_CONVENTION="${ENFORCE_BRANCH_CONVENTION:-true}"
+ENFORCE_PRE_PUSH="${ENFORCE_PRE_PUSH:-true}"
+HALT_ON_VALIDATION_FAIL="${HALT_ON_VALIDATION_FAIL:-true}"
+RUN_COMMITLINT="${RUN_COMMITLINT:-false}"
+COMMITLINT_CMD="${COMMITLINT_CMD:-npx --yes commitlint}"
+COMMITLINT_RANGE_MODE="${COMMITLINT_RANGE_MODE:-last}"
+BRANCH_NAME_REGEX="${BRANCH_NAME_REGEX:-^(feat|fix|chore|docs|refactor|test|build|ci|perf|style)\/[a-z0-9._-]+$}"
+ENFORCE_BRANCH_CONVENTION="${ENFORCE_BRANCH_CONVENTION:-true}"
 
 _log() { printf "[worktrees] %s\n" "$*"; }
 _err() { printf "[worktrees][error] %s\n" "$*" 1>&2; }
@@ -151,10 +158,27 @@ _fzf_select_branches() {
   if ! _has_cmd "$FZF_CMD"; then
     _die "fzf is required for --interactive. Install it and retry."
   fi
+  local preview_cmd
+  preview_cmd='bash -lc '\''
+branch="{}";
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd);
+wt_root="'"${WORKTREES_ROOT}"'";
+wt_path="${wt_root}/${branch}";
+echo "Branch: ${branch}";
+echo;
+echo "Upstream:";
+git rev-parse --abbrev-ref --symbolic-full-name "${branch}@{upstream}" 2>/dev/null || echo "(none)";
+echo;
+echo "Last commit:";
+git --no-pager log -1 --oneline --decorate "${branch}" 2>/dev/null || true;
+if [ -d "${wt_path}" ]; then
+  echo; echo "Worktree: ${wt_path}"; (cd "${wt_path}" && git status --short);
+fi
+'
   if $multi; then
-    printf "%s\n" "${branches[@]}" | "$FZF_CMD" --multi --prompt="branches> "
+    printf "%s\n" "${branches[@]}" | "$FZF_CMD" --multi --prompt="branches> " --preview="$preview_cmd" --preview-window=right:60%
   else
-    printf "%s\n" "${branches[@]}" | "$FZF_CMD" --prompt="branch> " | head -n1
+    printf "%s\n" "${branches[@]}" | "$FZF_CMD" --prompt="branch> " --preview="$preview_cmd" --preview-window=right:60% | head -n1
   fi
 }
 
@@ -475,7 +499,16 @@ cmd_push() {
     (
       cd "$path"
       _ensure_upstream "$branch"
-      _run_phase_tasks pre_push "$branch" "$path"
+      if ! _run_phase_tasks pre_push "$branch" "$path"; then
+        _err "Pre-push validations failed for $branch"
+        if [[ "$ENFORCE_PRE_PUSH" == "true" ]]; then
+          if [[ "$HALT_ON_VALIDATION_FAIL" == "true" ]]; then
+            exit 1
+          else
+            exit 0
+          fi
+        fi
+      fi
       if $changed_only; then
         if git diff --quiet && git diff --cached --quiet; then
           _log "No changes to push for $branch"
