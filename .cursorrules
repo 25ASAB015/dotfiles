@@ -1,0 +1,186 @@
+# Cursor Rules - Sistema de Gestión con Git Worktrees
+
+## 🎯 Propósito
+Este archivo configura Cursor para trabajar con nuestro sistema avanzado de git worktrees. 
+Incluso si no eres técnico, Cursor te guiará paso a paso.
+
+## 🚀 Inicio Rápido para Nuevos Usuarios
+
+### Primer Uso
+1. Abre una terminal en Cursor (Cmd/Ctrl + J)
+2. Ejecuta: `dotfiles/scripts/worktrees.sh create -i`
+3. Selecciona las ramas que quieres trabajar con las flechas y espacio
+4. ¡Listo! Ya tienes tus espacios de trabajo separados
+
+### Crear una Nueva Funcionalidad
+Simplemente di a Cursor:
+- "Quiero crear una nueva funcionalidad para [describe tu idea]"
+- "Necesito arreglar un bug en [describe el problema]"
+
+Cursor automáticamente:
+1. Creará una rama con el nombre correcto
+2. Preparará tu espacio de trabajo
+3. Te guiará en los commits
+
+## 📋 Reglas para el Asistente de Cursor
+
+### 1. SIEMPRE usar el script de worktrees
+- NUNCA uses comandos git directos cuando exista una función en el script
+- El script está en: `dotfiles/scripts/worktrees.sh`
+- Ante la duda, usa: `dotfiles/scripts/worktrees.sh --help`
+
+### 2. Flujo de trabajo estándar
+
+#### Para crear una nueva funcionalidad:
+```bash
+# Cursor debe sugerir automáticamente el prefijo correcto basado en el contexto
+dotfiles/scripts/worktrees.sh mkbranch --prefix [feat|fix|docs|chore] --title "[descripción]" --base main --push
+```
+
+#### Para actualizar tu código:
+```bash
+# Actualizar todos los worktrees
+dotfiles/scripts/worktrees.sh update -i
+
+# Ver qué ha cambiado
+dotfiles/scripts/worktrees.sh diff --stat -i
+```
+
+#### Para publicar cambios:
+```bash
+# El script validará automáticamente antes de publicar
+dotfiles/scripts/worktrees.sh push --changed -i
+```
+
+### 3. Convenciones OBLIGATORIAS
+
+#### Nombres de ramas:
+- feat/ - para nuevas funcionalidades
+- fix/ - para correcciones de bugs
+- docs/ - para documentación
+- chore/ - para tareas de mantenimiento
+- refactor/ - para mejoras de código
+- test/ - para pruebas
+- build/ - para cambios de construcción
+- ci/ - para integración continua
+- perf/ - para mejoras de rendimiento
+- style/ - para cambios de estilo
+
+#### Mensajes de commit:
+SIEMPRE usar: `npm run commit`
+Esto abrirá un asistente que te guiará paso a paso.
+
+### 4. Comportamiento del Asistente
+
+#### Cuando el usuario pida crear algo nuevo:
+1. Preguntar qué tipo de cambio es (feat, fix, etc.)
+2. Sugerir un título descriptivo
+3. Ejecutar: `dotfiles/scripts/worktrees.sh mkbranch --prefix [tipo] --title "[titulo]" --base main --push`
+4. Cambiar al nuevo worktree
+5. Comenzar a trabajar
+
+#### Cuando el usuario quiera ver el estado:
+1. Mostrar un resumen con: `dotfiles/scripts/worktrees.sh list`
+2. Para detalles: `dotfiles/scripts/worktrees.sh status`
+3. Para diferencias: `dotfiles/scripts/worktrees.sh diff --stat -i`
+
+#### Cuando el usuario quiera publicar:
+1. Verificar que no hay errores con las validaciones
+2. Usar: `dotfiles/scripts/worktrees.sh push --changed -i`
+3. Si hay errores, explicar claramente qué corregir
+
+#### Cuando el usuario termine una funcionalidad:
+1. Preguntar si quiere integrarla a main
+2. Usar: `dotfiles/scripts/worktrees.sh promote --branch [rama] --base main --no-ff`
+3. Confirmar que se completó exitosamente
+
+### 5. Manejo de Errores Comunes
+
+#### "No puedo hacer push":
+- Verificar validaciones: ¿están pasando los tests?
+- Revisar el nombre de la rama: ¿cumple con las convenciones?
+- Revisar commits: ¿siguen el formato conventional?
+
+#### "Tengo conflictos":
+1. Identificar en qué worktree estás
+2. Actualizar con: `dotfiles/scripts/worktrees.sh update --rebase`
+3. Resolver conflictos en el editor
+4. Continuar con el flujo normal
+
+#### "No sé en qué rama estoy":
+- Ejecutar: `pwd` para ver la ruta
+- El nombre de la carpeta dentro de `worktrees/` es tu rama actual
+
+### 6. Comandos de Emergencia
+
+Si algo sale mal:
+```bash
+# Ver todos los worktrees
+git worktree list
+
+# Limpiar worktrees rotos
+dotfiles/scripts/worktrees.sh prune
+
+# Volver a main
+cd /home/renaissance/devspaces/Jupiter🪐_Large_personal_project/dotfiles
+```
+
+### 7. Mejores Prácticas
+
+1. **Un worktree por tarea**: No mezcles cambios no relacionados
+2. **Commits frecuentes**: Mejor muchos commits pequeños que uno gigante
+3. **Actualiza seguido**: Ejecuta `update` al menos una vez al día
+4. **Usa el modo interactivo**: Los flags `-i` te dan control visual
+5. **No temas preguntar**: Si no entiendes algo, pide explicación
+
+### 8. Configuración del Entorno
+
+El archivo `.worktrees.env` controla el comportamiento. 
+Valores importantes:
+- `ENFORCE_PRE_PUSH=true` - Obliga validaciones antes de publicar
+- `RUN_COMMITLINT=true` - Valida formato de mensajes
+- `ENFORCE_BRANCH_CONVENTION=true` - Obliga convenciones de nombres
+
+### 9. Para Usuarios No Técnicos
+
+Si eres nuevo en programación:
+1. **No te preocupes por los comandos**: Cursor los ejecutará por ti
+2. **Describe lo que quieres hacer**: Cursor traducirá a comandos
+3. **Usa lenguaje natural**: "Quiero agregar un botón que haga X"
+4. **Pide explicaciones**: "¿Qué hace este comando?"
+5. **Confía en las validaciones**: El sistema te protege de errores
+
+### 10. Integración con Cursor
+
+Cursor debe:
+- Mostrar el worktree actual en el prompt
+- Sugerir comandos basados en el contexto
+- Explicar errores en lenguaje simple
+- Ofrecer soluciones automáticas
+- Mantener un historial de comandos útiles
+
+## 🎨 Personalización
+
+Si necesitas cambiar algo:
+1. Copia `.worktrees.env.example` a `.worktrees.env`
+2. Ajusta las variables según tus necesidades
+3. El script respetará tu configuración
+
+## 🆘 Ayuda
+
+- Script completo: `dotfiles/scripts/worktrees.sh --help`
+- Documentación: `dotfiles/README_WORKTREES.md`
+- TUI visual: `dotfiles/scripts/worktrees.sh tui`
+
+## 📝 Recordatorios para Cursor
+
+1. SIEMPRE validar antes de push
+2. SIEMPRE usar el script, no comandos git directos
+3. SIEMPRE seguir las convenciones de nombres
+4. SIEMPRE explicar qué se está haciendo y por qué
+5. SIEMPRE ofrecer alternativas cuando algo falle
+
+## 🎯 Objetivo Final
+
+Hacer que trabajar con git sea tan fácil como escribir un documento.
+El usuario debe poder concentrarse en su trabajo, no en git.
