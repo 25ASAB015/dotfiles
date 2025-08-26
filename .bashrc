@@ -29,3 +29,9 @@ export DOTBARE_KEY="
   --bind=alt-s:toggle-sort
   --bind=alt-t:toggle-preview
 "
+
+# GitHub SSH Agent Configuration (generado automáticamente)
+if [ -f ~/.ssh/id_ed25519 ]; then
+    eval "$(ssh-agent -s)" &>/dev/null
+    ssh-add ~/.ssh/id_ed25519 &>/dev/null
+fi
