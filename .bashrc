@@ -75,3 +75,8 @@ export NVM_DIR="$HOME/.nvm"
 
 # --- FIN DE CONFIGURACION DE DEVTOOLS ---
 
+# Añadir snap al PATH si la carpeta existe
+if [ -d "/var/lib/snapd/snap/bin" ]; then
+    export PATH="$PATH:/var/lib/snapd/snap/bin"
+fi
+
